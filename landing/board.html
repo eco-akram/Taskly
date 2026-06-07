@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Taskly — Your Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #f2ede6;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* HEADER */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 32px;
+      flex-shrink: 0;
+    }
+    .logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem; font-weight: 700; color: #1c1c1c;
+      text-decoration: none;
+    }
+    .header-actions { display: flex; gap: 10px; }
+    .btn-ghost {
+      background: white; color: #1c1c1c; border: 1px solid #ddd;
+      padding: 8px 18px; border-radius: 100px; font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .btn-ghost:hover { background: #f5f5f5; }
+    .btn-solid {
+      background: #1c1c1c; color: white; border: none;
+      padding: 8px 18px; border-radius: 100px; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-solid:hover { opacity: 0.85; }
+
+    /* PAGE TITLE */
+    .page-title {
+      padding: 8px 32px 28px;
+      flex-shrink: 0;
+    }
+    .page-title h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.8rem; font-weight: 700; color: #1c1c1c;
+      line-height: 1;
+    }
+    .page-title h1 em { font-style: italic; color: #7b6cf6; }
+    .page-title p { color: #7b6cf6; font-size: 0.88rem; margin-top: 8px; }
+
+    /* BOARD */
+    .board-wrap {
+      flex: 1; overflow-x: auto; padding: 0 32px 100px;
+    }
+    .board {
+      display: flex; gap: 20px; align-items: flex-start;
+      min-width: max-content;
+    }
+
+    /* COLUMN */
+    .column {
+      width: 320px; flex-shrink: 0;
+      background: white; border-radius: 18px;
+      padding: 18px; border: 1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+    .column-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .column-title {
+      font-weight: 600; font-size: 0.95rem; color: #1c1c1c;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .col-count {
+      background: #f0f0f0; color: #666;
+      font-size: 0.75rem; font-weight: 600;
+      width: 22px; height: 22px; border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .col-close {
+      background: none; border: none; cursor: pointer;
+      color: #bbb; font-size: 1rem; line-height: 1;
+      padding: 2px 6px; border-radius: 6px; transition: color 0.15s, background 0.15s;
+    }
+    .col-close:hover { color: #666; background: #f5f5f5; }
+
+    /* CARDS */
+    .cards { display: flex; flex-direction: column; gap: 10px; min-height: 8px; }
+
+    .card {
+      background: #fafafa; border: 1px solid #efefef; border-radius: 12px;
+      padding: 14px 16px; cursor: grab;
+      transition: box-shadow 0.15s, transform 0.15s;
+      position: relative;
+    }
+    .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .card.dragging { opacity: 0.5; cursor: grabbing; }
+    .card.drag-over { border-color: #7b6cf6; box-shadow: 0 0 0 2px rgba(123,108,246,0.2); }
+
+    .card-title { font-size: 0.9rem; font-weight: 500; color: #1c1c1c; margin-bottom: 6px; }
+    .card-desc { font-size: 0.78rem; color: #999; margin-bottom: 10px; line-height: 1.5; }
+    .card-tag {
+      font-size: 0.68rem; font-weight: 600; letter-spacing: 0.3px;
+      padding: 3px 9px; border-radius: 100px; display: inline-block;
+    }
+    .tag-design { background: #f0eeff; color: #6b5cf6; }
+    .tag-build  { background: #fff3e0; color: #e07b00; }
+    .tag-copy   { background: #e8f5e9; color: #2e7d32; }
+    .tag-launch { background: #fce4ec; color: #c62828; }
+    .tag-ops    { background: #e3f2fd; color: #1565c0; }
+    .tag-api    { background: #f3e5f5; color: #7b1fa2; }
+    .tag-default{ background: #f0f0f0; color: #555; }
+
+    /* ADD CARD */
+    .add-card {
+      display: flex; align-items: center; gap: 8px;
+      color: #aaa; font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; padding: 8px 4px; border-radius: 8px;
+      transition: color 0.15s, background 0.15s;
+      margin-top: 4px;
+      background: none; border: none; width: 100%; text-align: left;
+    }
+    .add-card:hover { color: #555; background: #f5f5f5; }
+
+    /* CARD INPUT FORM */
+    .card-form { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+    .card-form input, .card-form select {
+      border: 1px solid #e0e0e0; border-radius: 8px;
+      padding: 8px 12px; font-size: 0.85rem; font-family: inherit;
+      background: white; outline: none;
+      transition: border-color 0.15s;
+    }
+    .card-form input:focus, .card-form select:focus { border-color: #7b6cf6; }
+    .card-form-actions { display: flex; gap: 8px; }
+    .btn-add-confirm {
+      background: #1c1c1c; color: white; border: none;
+      padding: 7px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .btn-add-confirm:hover { opacity: 0.8; }
+    .btn-add-cancel {
+      background: none; border: 1px solid #e0e0e0; color: #888;
+      padding: 7px 12px; border-radius: 8px; font-size: 0.82rem;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .btn-add-cancel:hover { background: #f5f5f5; }
+
+    /* ADD COLUMN */
+    .add-column-btn {
+      width: 200px; flex-shrink: 0;
+      background: rgba(255,255,255,0.6); border: 2px dashed #d8d8d8; border-radius: 18px;
+      padding: 18px 20px; cursor: pointer;
+      display: flex; align-items: center; gap: 8px;
+      color: #aaa; font-size: 0.88rem; font-weight: 500;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .add-column-btn:hover { border-color: #7b6cf6; color: #7b6cf6; background: rgba(123,108,246,0.04); }
+
+    /* DROP ZONE */
+    .column.drag-target .cards { min-height: 60px; border: 2px dashed #c5bff8; border-radius: 8px; }
+
+    /* TOOLBAR */
+    .toolbar {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: white; border-radius: 100px;
+      padding: 10px 20px; display: flex; gap: 20px; align-items: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    }
+    .toolbar svg { width: 18px; height: 18px; color: #888; cursor: pointer; transition: color 0.2s; }
+    .toolbar svg:hover { color: #1c1c1c; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html" class="logo">Taskly</a>
+  <div class="header-actions">
+    <button class="btn-ghost" id="resetBtn">Reset</button>
+    <button class="btn-solid" onclick="location.href='index.html'">← Home</button>
+  </div>
+</header>
+
+<div class="page-title">
+  <h1>Your <em>board</em></h1>
+  <p>Drag cards between columns. Everything is saved locally to your browser.</p>
+</div>
+
+<div class="board-wrap">
+  <div class="board" id="board"></div>
+</div>
+
+<div class="toolbar">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+</div>
+
+<script>
+const DEFAULT_DATA = {
+  columns: [
+    {
+      id: 'col-1', title: 'To do',
+      cards: [
+        { id: 'c1', title: 'Sketch the new landing hero', desc: 'Try a collage layout with floating chips.', tag: 'DESIGN' },
+        { id: 'c2', title: 'Write the warning-label headline', desc: '', tag: 'COPY' },
+        { id: 'c3', title: 'Pick a serif for display type', desc: 'Instrument Serif vs Cormorant.', tag: 'DESIGN' },
+      ]
+    },
+    {
+      id: 'col-2', title: 'In progress',
+      cards: [
+        { id: 'c4', title: 'Wire drag-and-drop on the board', desc: '', tag: 'BUILD' },
+      ]
+    },
+    {
+      id: 'col-3', title: 'Done',
+      cards: [
+        { id: 'c5', title: 'Ship to-do list to friends for feedback', desc: '', tag: 'LAUNCH' },
+        { id: 'c6', title: 'Buy domain taskly.so', desc: '', tag: 'OPS' },
+      ]
+    }
+  ]
+};
+
+const TAG_CLASSES = {
+  DESIGN: 'tag-design', BUILD: 'tag-build', COPY: 'tag-copy',
+  LAUNCH: 'tag-launch', OPS: 'tag-ops', API: 'tag-api'
+};
+
+function loadData() {
+  try {
+    const saved = localStorage.getItem('taskly-board');
+    return saved ? JSON.parse(saved) : JSON.parse(JSON.stringify(DEFAULT_DATA));
+  } catch { return JSON.parse(JSON.stringify(DEFAULT_DATA)); }
+}
+function saveData(data) {
+  localStorage.setItem('taskly-board', JSON.stringify(data));
+}
+
+let data = loadData();
+let dragCard = null, dragFromCol = null;
+
+function uid() { return 'c' + Math.random().toString(36).slice(2, 9); }
+
+function tagClass(tag) { return TAG_CLASSES[tag?.toUpperCase()] || 'tag-default'; }
+
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  data.columns.forEach(col => {
+    const colEl = document.createElement('div');
+    colEl.className = 'column';
+    colEl.dataset.colId = col.id;
+
+    colEl.innerHTML = `
+      <div class="column-header">
+        <div class="column-title">
+          ${col.title}
+          <span class="col-count">${col.cards.length}</span>
+        </div>
+        <button class="col-close" data-col="${col.id}" title="Delete column">×</button>
+      </div>
+      <div class="cards" id="cards-${col.id}"></div>
+      <button class="add-card" data-col="${col.id}">+ Add a card</button>
+    `;
+
+    board.appendChild(colEl);
+
+    const cardsEl = colEl.querySelector(`#cards-${col.id}`);
+
+    col.cards.forEach(card => {
+      const cardEl = document.createElement('div');
+      cardEl.className = 'card';
+      cardEl.draggable = true;
+      cardEl.dataset.cardId = card.id;
+      cardEl.dataset.colId = col.id;
+      cardEl.innerHTML = `
+        ${card.tag ? `<div class="card-tag ${tagClass(card.tag)}">${card.tag}</div>` : ''}
+        <div class="card-title">${card.title}</div>
+        ${card.desc ? `<div class="card-desc">${card.desc}</div>` : ''}
+      `;
+
+      // Drag events
+      cardEl.addEventListener('dragstart', e => {
+        dragCard = card.id;
+        dragFromCol = col.id;
+        setTimeout(() => cardEl.classList.add('dragging'), 0);
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      cardEl.addEventListener('dragend', () => cardEl.classList.remove('dragging'));
+
+      cardsEl.appendChild(cardEl);
+    });
+
+    // Drop zone on cards container
+    cardsEl.addEventListener('dragover', e => {
+      e.preventDefault();
+      colEl.classList.add('drag-target');
+    });
+    cardsEl.addEventListener('dragleave', e => {
+      if (!colEl.contains(e.relatedTarget)) colEl.classList.remove('drag-target');
+    });
+    cardsEl.addEventListener('drop', e => {
+      e.preventDefault();
+      colEl.classList.remove('drag-target');
+      if (!dragCard || col.id === dragFromCol) return;
+
+      // Move card from source to target
+      const srcCol = data.columns.find(c => c.id === dragFromCol);
+      const card = srcCol.cards.find(c => c.id === dragCard);
+      srcCol.cards = srcCol.cards.filter(c => c.id !== dragCard);
+      col.cards.push(card);
+      dragCard = null; dragFromCol = null;
+      saveData(data);
+      render();
+    });
+  });
+
+  // Add column button
+  const addColBtn = document.createElement('button');
+  addColBtn.className = 'add-column-btn';
+  addColBtn.innerHTML = '+ Add column';
+  addColBtn.addEventListener('click', () => {
+    const name = prompt('Column name:');
+    if (!name?.trim()) return;
+    data.columns.push({ id: 'col-' + uid(), title: name.trim(), cards: [] });
+    saveData(data);
+    render();
+  });
+  board.appendChild(addColBtn);
+
+  // Delete column
+  board.querySelectorAll('.col-close').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const colId = btn.dataset.col;
+      if (data.columns.find(c => c.id === colId)?.cards.length > 0) {
+        if (!confirm('Delete this column and all its cards?')) return;
+      }
+      data.columns = data.columns.filter(c => c.id !== colId);
+      saveData(data);
+      render();
+    });
+  });
+
+  // Add card buttons
+  board.querySelectorAll('.add-card').forEach(btn => {
+    btn.addEventListener('click', () => showAddForm(btn.dataset.col, btn));
+  });
+}
+
+function showAddForm(colId, triggerBtn) {
+  triggerBtn.style.display = 'none';
+
+  const form = document.createElement('div');
+  form.className = 'card-form';
+  form.innerHTML = `
+    <input type="text" placeholder="Card title…" id="new-card-title-${colId}" maxlength="120" />
+    <input type="text" placeholder="Description (optional)" id="new-card-desc-${colId}" maxlength="200" />
+    <select id="new-card-tag-${colId}">
+      <option value="">No tag</option>
+      <option value="DESIGN">DESIGN</option>
+      <option value="BUILD">BUILD</option>
+      <option value="COPY">COPY</option>
+      <option value="LAUNCH">LAUNCH</option>
+      <option value="OPS">OPS</option>
+      <option value="API">API</option>
+    </select>
+    <div class="card-form-actions">
+      <button class="btn-add-confirm" id="confirm-${colId}">Add card</button>
+      <button class="btn-add-cancel" id="cancel-${colId}">Cancel</button>
+    </div>
+  `;
+
+  triggerBtn.parentNode.insertBefore(form, triggerBtn);
+  document.getElementById(`new-card-title-${colId}`).focus();
+
+  document.getElementById(`confirm-${colId}`).addEventListener('click', () => {
+    const title = document.getElementById(`new-card-title-${colId}`).value.trim();
+    if (!title) return;
+    const desc = document.getElementById(`new-card-desc-${colId}`).value.trim();
+    const tag = document.getElementById(`new-card-tag-${colId}`).value;
+    const col = data.columns.find(c => c.id === colId);
+    col.cards.push({ id: uid(), title, desc, tag });
+    saveData(data);
+    render();
+  });
+
+  document.getElementById(`cancel-${colId}`).addEventListener('click', () => render());
+
+  form.querySelector('input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById(`confirm-${colId}`).click();
+    if (e.key === 'Escape') render();
+  });
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Reset board to default state?')) {
+    data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+    saveData(data);
+    render();
+  }
+});
+
+render();
+</script>
+</body>
+</html>

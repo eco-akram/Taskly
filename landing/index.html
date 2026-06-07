@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Taskly</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #f2ede6;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* NAV */
+    nav {
+      display: flex; justify-content: center;
+      padding: 28px 24px 0;
+    }
+    .nav-pill {
+      display: flex; align-items: center; gap: 0;
+      background: #1c1c1c; border-radius: 100px;
+      padding: 10px 10px 10px 22px;
+      gap: 4px;
+    }
+    .nav-brand {
+      font-family: 'Playfair Display', serif;
+      font-weight: 700; font-size: 1rem; color: white;
+      margin-right: 16px;
+    }
+    .nav-divider { width: 1px; height: 18px; background: rgba(255,255,255,0.15); margin: 0 12px; }
+    .nav-links { display: flex; gap: 4px; }
+    .nav-links a {
+      color: rgba(255,255,255,0.65); text-decoration: none;
+      font-size: 0.88rem; padding: 6px 14px; border-radius: 100px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-links a:hover { color: white; background: rgba(255,255,255,0.08); }
+    .nav-cta {
+      background: white; color: #1c1c1c; text-decoration: none;
+      font-size: 0.88rem; font-weight: 600; padding: 8px 18px;
+      border-radius: 100px; margin-left: 8px;
+      display: flex; align-items: center; gap: 6px;
+      transition: opacity 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+    .nav-cta svg { width: 14px; height: 14px; }
+
+    /* HERO */
+    .hero {
+      position: relative;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center;
+      padding: 72px 24px 100px;
+      overflow: hidden;
+    }
+
+    /* Floating chips */
+    .chip {
+      position: absolute; font-size: 0.82rem; font-weight: 600;
+      padding: 8px 16px; border-radius: 100px;
+      white-space: nowrap; pointer-events: none;
+    }
+    .chip-purple { background: #7b6cf6; color: white; }
+    .chip-green { background: #7dc96b; color: #1a3a12; }
+    .chip-left { left: 5%; top: 38%; transform: rotate(-8deg); }
+    .chip-right { right: 7%; top: 32%; }
+    .chip-arrow { display: block; font-size: 1rem; margin-top: 2px; color: inherit; opacity: 0.7; }
+
+    /* Floating cards */
+    .float-card {
+      position: absolute; background: white; border-radius: 14px;
+      padding: 14px 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      pointer-events: none; font-size: 0.82rem;
+    }
+    .float-card-left { left: -2%; top: 52%; transform: rotate(-6deg); width: 140px; }
+    .float-card-right { right: 3%; top: 50%; transform: rotate(3deg); width: 180px; }
+    .float-card .card-tag {
+      font-size: 0.7rem; font-weight: 600; padding: 3px 8px;
+      border-radius: 100px; display: inline-block; margin-bottom: 6px;
+    }
+    .tag-orange { background: #e8553e; color: white; }
+    .float-card .card-title { font-weight: 600; font-size: 0.85rem; color: #1c1c1c; }
+    .float-card .card-sub { font-size: 0.75rem; color: #999; font-family: serif; font-style: italic; }
+    .float-card .card-bar { height: 4px; background: #e8e8e8; border-radius: 2px; margin-top: 8px; }
+    .float-card .card-bar-fill { height: 4px; background: #bbb; border-radius: 2px; width: 60%; }
+
+    /* Badge */
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #e8553e; color: white;
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      padding: 7px 18px; border-radius: 100px;
+      margin-bottom: 36px;
+    }
+    .badge-dot { width: 7px; height: 7px; background: white; border-radius: 50%; }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.8rem, 7vw, 5rem);
+      font-weight: 800; line-height: 1.1;
+      color: #1c1c1c; max-width: 700px;
+      margin-bottom: 28px;
+    }
+    h1 em {
+      font-style: italic; font-weight: 700;
+      color: #7b6cf6;
+    }
+
+    .hero-sub {
+      font-size: 1.05rem; color: #6b6b6b;
+      max-width: 520px; line-height: 1.7;
+      margin-bottom: 44px;
+    }
+
+    .btn-dark {
+      background: #1c1c1c; color: white;
+      padding: 16px 32px; border-radius: 100px;
+      text-decoration: none; font-weight: 600; font-size: 1rem;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+      margin-bottom: 40px;
+    }
+    .btn-dark:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+
+    /* Avatars */
+    .avatars { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .avatar-row { display: flex; gap: 6px; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #f2ede6; }
+    .av1 { background: #e8553e; }
+    .av2 { background: #5b9cf6; }
+    .av3 { background: #7dc96b; }
+    .av4 { background: #b06cf6; }
+    .avatars-label { font-size: 0.82rem; color: #7b6cf6; font-weight: 500; }
+
+    /* Bottom toolbar */
+    .toolbar {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: white; border-radius: 100px;
+      padding: 10px 20px; display: flex; gap: 20px; align-items: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+    }
+    .toolbar svg { width: 18px; height: 18px; color: #888; cursor: pointer; transition: color 0.2s; }
+    .toolbar svg:hover { color: #1c1c1c; }
+
+    @media (max-width: 600px) {
+      .chip, .float-card { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-pill">
+    <span class="nav-brand">Taskly</span>
+    <div class="nav-divider"></div>
+    <div class="nav-links">
+      <a href="#">Home</a>
+      <a href="#">Features</a>
+      <a href="#">About</a>
+    </div>
+    <a href="board.html" class="nav-cta">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8h10M9 4l4 4-4 4"/></svg>
+      Try it
+    </a>
+  </div>
+</nav>
+
+<!-- Floating elements -->
+<div class="chip chip-purple chip-left">Lead designer <span class="chip-arrow">↗</span></div>
+<div class="chip chip-green chip-right">Perhaps you?</div>
+
+<div class="float-card float-card-left">
+  <div style="font-family:serif;font-style:italic;font-size:1.1rem;color:#1c1c1c;">Normal</div>
+  <div class="card-bar"><div class="card-bar-fill"></div></div>
+</div>
+
+<div class="float-card float-card-right">
+  <div class="card-tag tag-orange">Ship Friday</div>
+  <div class="card-title">Craftwork</div>
+  <div class="card-bar"><div class="card-bar-fill" style="width:80%"></div></div>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="badge"><span class="badge-dot"></span> Now in early access</div>
+
+  <h1>Task boards so good,<br /><em>they should come</em> with<br />a warning label</h1>
+
+  <p class="hero-sub">
+    Taskly is a warm, editorial take on the classic Kanban board. Plan your
+    week, ship side projects, and keep your team in flow — no setup, no clutter.
+  </p>
+
+  <a href="board.html" class="btn-dark">Open your board ↗</a>
+
+  <div class="avatars">
+    <div class="avatar-row">
+      <div class="avatar av1"></div>
+      <div class="avatar av2"></div>
+      <div class="avatar av3"></div>
+      <div class="avatar av4"></div>
+    </div>
+    <span class="avatars-label">Trusted by 200+ makers and small teams</span>
+  </div>
+</section>
+
+<!-- Bottom toolbar -->
+<div class="toolbar">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h10M4 17h13"/><path d="M17 15l4-3-4-3"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+</div>
+
+</body>
+</html>
